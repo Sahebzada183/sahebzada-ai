@@ -1,54 +1,42 @@
+async function generateImage() {
+  const prompt = document.getElementById("promptInput").value;
+  const size = document.getElementById("sizeSelect").value;
+  const imageGrid = document.getElementById("imageGrid");
 
-async function generateImages() {
-  const prompt = document.getElementById("prompt").value;
-  const size = document.getElementById("size").value.split("x");
-  const resultDiv = document.getElementById("result");
-  const historyDiv = document.getElementById("history");
-  const loading = document.getElementById("loading");
-  resultDiv.innerHTML = "";
-  loading.style.display = "block";
+  imageGrid.innerHTML = "<p>⏳ Generating images...</p>";
 
-  const n = 4;
-  for (let i = 0; i < n; i++) {
-    const response = await fetch("https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer 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",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          width: parseInt(size[0]),
-          height: parseInt(size[1])
-        }
-      })
+  const [width, height] = size.split("x");
+
+  const response = await fetch("https://api.replicate.com/v1/predictions", {
+    method: "POST",
+    headers: {
+      "Authorization": "Token YOUR_REPLICATE_API_TOKEN_HERE",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      version: "a9758cb3c2c0512a82cd55df4b30524557c4a5455a2e1422433e6d8e5f38ca33",
+      input: {
+        prompt: prompt,
+        width: parseInt(width),
+        height: parseInt(height),
+        num_outputs: 4
+      }
+    })
+  });
+
+  const result = await response.json();
+
+  if (result && result.urls && result.urls.get) {
+    const finalResponse = await fetch(result.urls.get);
+    const finalResult = await finalResponse.json();
+
+    imageGrid.innerHTML = "";
+    finalResult.output.forEach(imgUrl => {
+      const img = document.createElement("img");
+      img.src = imgUrl;
+      imageGrid.appendChild(img);
     });
-
-    const blob = await response.blob();
-    const imageUrl = URL.createObjectURL(blob);
-
-    const img = document.createElement("img");
-    img.src = imageUrl;
-
-    const downloadLink = document.createElement("a");
-    downloadLink.href = imageUrl;
-    downloadLink.download = `sahebzada_image_${Date.now()}.png`;
-    downloadLink.textContent = "⬇️ Download";
-    downloadLink.className = "download-btn";
-
-    const container = document.createElement("div");
-    container.appendChild(img);
-    container.appendChild(downloadLink);
-
-    resultDiv.appendChild(container);
-    historyDiv.appendChild(container.cloneNode(true)); // Add to history too
+  } else {
+    imageGrid.innerHTML = "<p>❌ Failed to generate images.</p>";
   }
-
-  loading.style.display = "none";
-}
-
-function setLanguage() {
-  const lang = document.getElementById("language").value;
-  document.getElementById("prompt").placeholder = lang === "ur" ? "تصویر کا تفصیلی بیان لکھیں..." : "Describe your image...";
 }
